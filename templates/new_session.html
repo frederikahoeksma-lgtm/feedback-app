@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}New Session — EKX Feedback{% endblock %}
+{% block topbar_page %}New Session{% endblock %}
+
+{% block head %}
+<style>
+  .question-card {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .question-card .q-handle {
+    display: inline-block;
+    background: var(--blue);
+    color: var(--white);
+    font-size: 11px; font-weight: 700;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    text-align: center; line-height: 22px;
+    margin-right: 8px;
+  }
+  .question-card .remove-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: none; border: none;
+    color: var(--gray-400); cursor: pointer; font-size: 16px; line-height: 1;
+    padding: 2px 6px; border-radius: 4px;
+    transition: background .15s, color .15s;
+  }
+  .question-card .remove-btn:hover { background: #FFF0F0; color: var(--danger); }
+  .options-list { margin-top: 8px; }
+  .option-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
+  .option-row input { flex: 1; }
+  .add-option-btn {
+    background: none; border: 1px dashed var(--blue-acc); color: var(--blue);
+    border-radius: var(--radius); padding: 6px 12px; font-size: 12px;
+    cursor: pointer; margin-top: 4px; transition: background .15s;
+  }
+  .add-option-btn:hover { background: var(--blue-light); }
+  .type-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .type-tab {
+    padding: 4px 12px; border-radius: 100px;
+    border: 1px solid var(--gray-200); background: var(--white);
+    font-size: 12px; cursor: pointer; font-weight: 500;
+    transition: all .15s; color: var(--gray-600);
+  }
+  .type-tab.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
+  .step-indicator { display: flex; gap: 0; margin-bottom: 32px; }
+  .step {
+    flex: 1; text-align: center; padding: 10px;
+    background: var(--gray-100); border: 1px solid var(--gray-200);
+    font-size: 12px; font-weight: 600; color: var(--gray-400);
+  }
+  .step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .step:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+  .step.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
+  .step.done   { background: var(--blue-light); color: var(--blue); border-color: var(--blue-acc); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:760px;">
+  <div class="page-header">
+    <h1 class="page-title">New Feedback Session</h1>
+    <p class="page-subtitle">Define your session details and add the questions you want to ask.</p>
+  </div>
+
+  <div class="step-indicator">
+    <div class="step active" id="step1-ind">1 &nbsp; Session Details</div>
+    <div class="step" id="step2-ind">2 &nbsp; Questions</div>
+    <div class="step" id="step3-ind">3 &nbsp; Review</div>
+  </div>
+
+  <form id="mainForm" method="POST" action="/session/new">
+    <input type="hidden" name="questions_json" id="questions_json" value="[]" />
+
+    <!-- Step 1: Session Details -->
+    <div id="step1">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Session Details</span></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label" for="title">Session Title <span style="color:var(--danger)">*</span></label>
+            <input class="form-input" type="text" id="title" name="title" placeholder="e.g. Team Retrospective Q2" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="description">Description (optional)</label>
+            <textarea class="form-textarea" id="description" name="description" placeholder="Brief context for participants..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="max_participants">Maximum Participants</label>
+            <input class="form-input" type="number" id="max_participants" name="max_participants" value="20" min="1" max="200" style="max-width:120px;" />
+            <p class="form-hint">Responses are accepted until this number is reached.</p>
+          </div>
+          <div class="flex-between mt-16">
+            <a href="/" class="btn btn-ghost">Cancel</a>
+            <button type="button" class="btn btn-primary" onclick="goToStep(2)">Next: Add Questions &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Questions -->
+    <div id="step2" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Questions</span>
+          <span class="badge badge-blue" id="q-count">0 questions</span>
+        </div>
+        <div class="card-body">
+          <div id="questions-container"></div>
+          <button type="button" class="btn btn-secondary mt-16" onclick="addQuestion()">+ Add Question</button>
+
+          <div class="flex-between mt-24">
+            <button type="button" class="btn btn-ghost" onclick="goToStep(1)">&larr; Back</button>
+            <button type="button" class="btn btn-primary" onclick="goToStep(3)">Next: Review &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Review -->
+    <div id="step3" style="display:none;">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Review & Create</span></div>
+        <div class="card-body">
+          <div id="review-content"></div>
+          <div class="flex-between mt-24">
+            <button type="button" class="btn btn-ghost" onclick="goToStep(2)">&larr; Back</button>
+            <button type="submit" class="btn btn-primary btn-lg">Create Session &amp; Get QR Code</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let questions = [];
+  let currentStep = 1;
+
+  function goToStep(n) {
+    if (n === 2) {
+      const title = document.getElementById('title').value.trim();
+      if (!title) { showToast('Please enter a session title.'); return; }
+      if (questions.length === 0) addQuestion();
+    }
+    if (n === 3) {
+      if (questions.length === 0) { showToast('Please add at least one question.'); return; }
+      for (let i = 0; i < questions.length; i++) {
+        if (!questions[i].text.trim()) { showToast(`Question ${i+1} has no text.`); return; }
+      }
+      buildReview();
+    }
+    document.getElementById(`step${currentStep}`).style.display = 'none';
+    document.getElementById(`step${currentStep}-ind`).classList.remove('active');
+    document.getElementById(`step${currentStep}-ind`).classList.add('done');
+    currentStep = n;
+    document.getElementById(`step${currentStep}`).style.display = '';
+    document.getElementById(`step${currentStep}-ind`).classList.add('active');
+    document.getElementById(`step${currentStep}-ind`).classList.remove('done');
+    document.getElementById('questions_json').value = JSON.stringify(questions);
+  }
+
+  function addQuestion() {
+    const idx = questions.length;
+    questions.push({ text: '', type: 'text', options: [] });
+    renderQuestions();
+    // focus new question
+    setTimeout(() => {
+      const el = document.getElementById(`q-text-${idx}`);
+      if (el) el.focus();
+    }, 50);
+  }
+
+  function removeQuestion(idx) {
+    questions.splice(idx, 1);
+    renderQuestions();
+  }
+
+  function setType(idx, type) {
+    questions[idx].type = type;
+    if (type !== 'single' && type !== 'multiple') questions[idx].options = [];
+    if ((type === 'single' || type === 'multiple') && questions[idx].options.length === 0) {
+      questions[idx].options = ['', ''];
+    }
+    renderQuestions();
+  }
+
+  function updateText(idx, val) { questions[idx].text = val; updateCount(); }
+  function updateOption(idx, oidx, val) { questions[idx].options[oidx] = val; }
+
+  function addOption(idx) {
+    questions[idx].options.push('');
+    renderQuestions();
+    setTimeout(() => {
+      const els = document.querySelectorAll(`#options-${idx} .opt-input`);
+      if (els.length) els[els.length-1].focus();
+    }, 50);
+  }
+
+  function removeOption(idx, oidx) {
+    questions[idx].options.splice(oidx, 1);
+    renderQuestions();
+  }
+
+  function updateCount() {
+    document.getElementById('q-count').textContent = `${questions.length} question${questions.length !== 1 ? 's' : ''}`;
+  }
+
+  const typeLabels = { text: 'Open Text', single: 'Single Choice', multiple: 'Multiple Choice', rating: 'Rating (1–5)', yesno: 'Yes / No' };
+
+  function renderQuestions() {
+    updateCount();
+    const container = document.getElementById('questions-container');
+    container.innerHTML = '';
+    questions.forEach((q, idx) => {
+      const div = document.createElement('div');
+      div.className = 'question-card';
+      div.innerHTML = `
+        <div style="margin-bottom:10px;" class="flex-center gap-8">
+          <span class="q-handle">${idx+1}</span>
+          <span style="font-size:12px;font-weight:600;color:var(--gray-600);">Question ${idx+1}</span>
+        </div>
+        <button type="button" class="remove-btn" onclick="removeQuestion(${idx})" title="Remove question">&times;</button>
+        <div class="form-group">
+          <label class="form-label">Question Text</label>
+          <input class="form-input" type="text" id="q-text-${idx}" value="${escapeHtml(q.text)}"
+            oninput="updateText(${idx}, this.value)" placeholder="Type your question..." />
+        </div>
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="form-label">Answer Type</label>
+          <div class="type-tabs">
+            ${Object.entries(typeLabels).map(([t,l]) =>
+              `<button type="button" class="type-tab ${q.type===t?'active':''}" onclick="setType(${idx},'${t}')">${l}</button>`
+            ).join('')}
+          </div>
+        </div>
+        ${(q.type === 'single' || q.type === 'multiple') ? `
+        <div class="options-list" id="options-${idx}">
+          <label class="form-label">Options</label>
+          ${q.options.map((opt,oidx) => `
+            <div class="option-row">
+              <input class="form-input opt-input" type="text" value="${escapeHtml(opt)}"
+                oninput="updateOption(${idx},${oidx},this.value)"
+                placeholder="Option ${oidx+1}" />
+              <button type="button" onclick="removeOption(${idx},${oidx})"
+                style="background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:18px;padding:0 4px;"
+                title="Remove option">&times;</button>
+            </div>
+          `).join('')}
+          <button type="button" class="add-option-btn" onclick="addOption(${idx})">+ Add option</button>
+        </div>
+        ` : ''}
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function buildReview() {
+    const title = document.getElementById('title').value;
+    const desc  = document.getElementById('description').value;
+    const maxp  = document.getElementById('max_participants').value;
+    const r = document.getElementById('review-content');
+    r.innerHTML = `
+      <div style="margin-bottom:20px;">
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:4px;">Session Title</p>
+        <p style="font-weight:600;">${escapeHtml(title)}</p>
+        ${desc ? `<p style="font-size:13px;color:var(--gray-600);margin-top:8px;">${escapeHtml(desc)}</p>` : ''}
+        <p style="font-size:12px;color:var(--gray-400);margin-top:6px;">Max participants: ${maxp}</p>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--gray-100);margin-bottom:20px;" />
+      <p style="font-size:13px;font-weight:600;margin-bottom:12px;">${questions.length} Question${questions.length!==1?'s':''}</p>
+      ${questions.map((q,i) => `
+        <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-start;">
+          <span class="q-handle" style="flex-shrink:0;">${i+1}</span>
+          <div>
+            <p style="font-weight:500;">${escapeHtml(q.text)}</p>
+            <p style="font-size:12px;color:var(--gray-400);margin-top:2px;">${typeLabels[q.type]}
+              ${q.options.length ? ' · ' + q.options.filter(o=>o).map(o=>`<em>${escapeHtml(o)}</em>`).join(', ') : ''}
+            </p>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str || ''));
+    return d.innerHTML;
+  }
+</script>
+{% endblock %}

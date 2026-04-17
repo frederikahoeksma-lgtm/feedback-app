@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────────
+#  EKX Live Feedback App — Docker Compose
+#
+#  Start:   docker compose up --build
+#  Stop:    docker compose down
+#  Data persists in the named volume "ekx_data" between restarts.
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  feedback:
+    build: .
+    container_name: ekx-feedback
+    ports:
+      - "5000:5000"          # Change left side to use a different host port, e.g. "8080:5000"
+    environment:
+      - PORT=5000
+    volumes:
+      - ekx_data:/app        # Persists feedback.db across restarts
+    restart: unless-stopped
+
+volumes:
+  ekx_data:

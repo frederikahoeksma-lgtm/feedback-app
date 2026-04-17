@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>{{ sess.title }} — Feedback</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #0070F2;
+      --blue-light: #E1F4FF;
+      --blue-dark:  #0134BF;
+      --blue-acc:   #4CB1FF;
+      --gray-50:    #F5F6F7;
+      --gray-100:   #EAECEE;
+      --gray-200:   #D9DBDE;
+      --gray-400:   #89919A;
+      --gray-600:   #475E75;
+      --gray-800:   #32363A;
+      --white:      #FFFFFF;
+      --success:    #107E3E;
+      --danger:     #BB0000;
+      --radius:     14px;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', 'Arial', sans-serif;
+      background: linear-gradient(150deg, #E1F4FF 0%, #F5F6F7 70%);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      color: var(--gray-800);
+    }
+
+    /* ── Top bar ── */
+    .mobile-header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 13px 20px;
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .mobile-logo {
+      background: var(--blue); color: var(--white);
+      font-weight: 700; font-size: 12px; letter-spacing: .5px;
+      padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+    }
+    .mobile-header-title {
+      font-size: 14px; font-weight: 600; color: var(--gray-800);
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .step-counter {
+      font-size: 12px; font-weight: 600; color: var(--blue);
+      background: var(--blue-light); padding: 3px 10px; border-radius: 100px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ── Progress bar ── */
+    .progress-track {
+      height: 3px; background: var(--gray-100); position: sticky; top: 48px; z-index: 9;
+    }
+    .progress-fill {
+      height: 100%; background: var(--blue);
+      border-radius: 0 100px 100px 0;
+      transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Stage wrapper ── */
+    .stage {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding: 28px 16px 40px;
+      overflow: hidden;
+    }
+
+    /* ── Slide ── */
+    .slide {
+      width: 100%; max-width: 520px;
+      display: none; flex-direction: column;
+      animation: slideIn 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    .slide.active { display: flex; }
+    .slide.leaving {
+      display: flex;
+      animation: slideOut 0.25s cubic-bezier(.4,0,.2,1) forwards;
+    }
+    @keyframes slideIn  { from { opacity:0; transform:translateX(40px);  } to { opacity:1; transform:translateX(0); } }
+    @keyframes slideOut { from { opacity:1; transform:translateX(0);     } to { opacity:0; transform:translateX(-40px); } }
+    @keyframes slideInBack  { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes slideOutBack { from { opacity:1; transform:translateX(0);     } to { opacity:0; transform:translateX(40px); } }
+    .slide.entering-back  { animation: slideInBack  0.3s cubic-bezier(.4,0,.2,1); }
+    .slide.leaving-back   { animation: slideOutBack 0.25s cubic-bezier(.4,0,.2,1) forwards; }
+
+    /* ── Intro slide ── */
+    .intro-card {
+      background: var(--white); border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 4px 20px rgba(0,0,0,.07);
+      padding: 32px 24px; text-align: center; margin-bottom: 20px;
+    }
+    .intro-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--blue-light); color: var(--blue);
+      font-size: 26px; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .intro-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .intro-desc  { font-size: 14px; color: var(--gray-600); line-height: 1.5; margin-bottom: 20px; }
+    .intro-meta  { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+    /* ── Name input ── */
+    .name-field {
+      width: 100%; padding: 13px 16px;
+      border: 1.5px solid var(--gray-200); border-radius: 10px;
+      font-size: 15px; font-family: inherit; outline: none;
+      color: var(--gray-800); background: var(--white);
+      margin-bottom: 8px;
+    }
+    .name-field:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,112,242,.1); }
+    .name-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--gray-600); }
+
+    /* ── Question card ── */
+    .q-card {
+      background: var(--white); border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 4px 20px rgba(0,0,0,.07);
+      padding: 24px 20px; margin-bottom: 16px;
+    }
+    .q-header {
+      display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px;
+    }
+    .q-num {
+      background: var(--blue); color: var(--white);
+      font-weight: 700; font-size: 12px;
+      min-width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .q-text { font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--gray-800); }
+    .q-required { color: var(--danger); margin-left: 3px; font-size: 14px; }
+
+    /* Text answer */
+    .q-textarea {
+      width: 100%; padding: 13px 14px;
+      border: 1.5px solid var(--gray-200); border-radius: 10px;
+      font-size: 15px; font-family: inherit; resize: vertical; min-height: 100px;
+      outline: none; color: var(--gray-800);
+    }
+    .q-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,112,242,.1); }
+
+    /* Choice options */
+    .choice-list { display: flex; flex-direction: column; gap: 10px; }
+    .choice-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      border: 2px solid var(--gray-200); border-radius: 12px;
+      cursor: pointer; transition: all .15s;
+      user-select: none; background: var(--white);
+    }
+    .choice-item:hover    { border-color: var(--blue-acc); background: var(--blue-light); }
+    .choice-item.selected { border-color: var(--blue); background: var(--blue-light); }
+    .choice-circle {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--gray-400); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .choice-item.selected .choice-circle { border-color: var(--blue); background: var(--blue); }
+    .choice-check {
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid var(--gray-400); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .choice-item.selected .choice-check { border-color: var(--blue); background: var(--blue); }
+    .choice-inner-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--white); opacity: 0; transition: opacity .15s; }
+    .choice-item.selected .choice-inner-dot { opacity: 1; }
+    .choice-checkmark { color: var(--white); font-size: 13px; opacity: 0; transition: opacity .15s; font-weight: 700; }
+    .choice-item.selected .choice-checkmark { opacity: 1; }
+    .choice-label { font-size: 15px; color: var(--gray-800); }
+
+    /* Yes/No */
+    .yesno-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .yesno-btn {
+      padding: 18px; border-radius: 12px;
+      border: 2px solid var(--gray-200); background: var(--white);
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      transition: all .15s; color: var(--gray-800); text-align: center;
+    }
+    .yesno-btn:hover      { border-color: var(--blue-acc); background: var(--blue-light); }
+    .yesno-btn.sel-yes    { border-color: var(--success); background: #F0FFF4; color: var(--success); }
+    .yesno-btn.sel-no     { border-color: var(--danger);  background: #FFF0F0; color: var(--danger);  }
+
+    /* Rating */
+    .rating-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .rating-btn {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid var(--gray-200); background: var(--white);
+      font-size: 20px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s; color: var(--gray-600);
+    }
+    .rating-btn:hover  { border-color: var(--blue-acc); background: var(--blue-light); color: var(--blue); }
+    .rating-btn.selected { border-color: var(--blue); background: var(--blue); color: var(--white); }
+    .rating-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray-400); margin-top: 8px; padding: 0 6px; }
+
+    /* Error */
+    .q-card.error { border-color: var(--danger) !important; }
+    .error-msg { font-size: 12px; color: var(--danger); margin-top: 10px; display: none; }
+
+    /* ── Nav buttons ── */
+    .nav-row {
+      display: flex; gap: 10px; margin-top: 4px;
+    }
+    .btn-back, .btn-next, .btn-submit {
+      flex: 1; padding: 15px;
+      border-radius: 12px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+      transition: all .15s; letter-spacing: .2px;
+    }
+    .btn-back   { background: var(--gray-100); color: var(--gray-600); flex: 0 0 auto; width: 52px; padding: 15px 0; font-size: 20px; }
+    .btn-back:hover   { background: var(--gray-200); }
+    .btn-next   { background: var(--blue); color: var(--white); }
+    .btn-next:hover   { background: var(--blue-dark); }
+    .btn-submit { background: var(--success); color: var(--white); }
+    .btn-submit:hover { background: #0d6632; }
+    .btn-submit:disabled { background: var(--gray-400); cursor: not-allowed; }
+
+    /* ── Success screen ── */
+    .success-screen {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 40px 24px;
+    }
+    .success-icon {
+      width: 88px; height: 88px; border-radius: 50%;
+      background: var(--success); color: var(--white);
+      font-size: 44px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px; box-shadow: 0 6px 24px rgba(16,126,62,.25);
+      animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popIn { from { transform:scale(0.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+    .success-title { font-size: 24px; font-weight: 700; color: var(--gray-800); margin-bottom: 10px; }
+    .success-sub   { font-size: 15px; color: var(--gray-600); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="mobile-header">
+    <span class="mobile-logo">EKX</span>
+    <span class="mobile-header-title">{{ sess.title }}</span>
+    <span class="step-counter" id="step-counter">Intro</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+
+  <!-- ── Form view ── -->
+  <div id="form-view">
+    <div class="stage" id="stage">
+
+      <!-- Slide 0: Intro / Name -->
+      <div class="slide active" id="slide-intro">
+        <div class="intro-card">
+          <div class="intro-icon">📋</div>
+          <h1 class="intro-title">{{ sess.title }}</h1>
+          {% if sess.description %}
+          <p class="intro-desc">{{ sess.description }}</p>
+          {% endif %}
+          <p class="intro-meta">{{ questions|length }} question{{ 's' if questions|length != 1 else '' }} &nbsp;·&nbsp; Takes ~2 min</p>
+        </div>
+        <label class="name-label" for="participant-name">Your name (optional)</label>
+        <input class="name-field" type="text" id="participant-name" placeholder="e.g. Alex" autocomplete="given-name" />
+        <div class="nav-row" style="margin-top:16px;">
+          <button class="btn-next" onclick="goTo(0, 'forward')">Start &rarr;</button>
+        </div>
+      </div>
+
+      <!-- One slide per question -->
+      {% for q in questions %}
+      <div class="slide" id="slide-{{ loop.index0 }}" data-qid="{{ q.id }}" data-type="{{ q.type }}">
+        <div class="q-card" id="qcard-{{ q.id }}">
+          <div class="q-header">
+            <span class="q-num">{{ loop.index }}</span>
+            <span class="q-text">{{ q.text }}<span class="q-required">*</span></span>
+          </div>
+
+          {% if q.type == 'text' %}
+            <textarea class="q-textarea" id="ans-{{ q.id }}" placeholder="Type your answer here..."></textarea>
+
+          {% elif q.type == 'single' %}
+            <div class="choice-list" id="ans-{{ q.id }}">
+              {% for opt in q.options %}
+              <label class="choice-item" onclick="selectSingle('{{ q.id }}','{{ opt }}',this)">
+                <span class="choice-circle"><span class="choice-inner-dot"></span></span>
+                <span class="choice-label">{{ opt }}</span>
+              </label>
+              {% endfor %}
+            </div>
+
+          {% elif q.type == 'multiple' %}
+            <div class="choice-list" id="ans-{{ q.id }}">
+              {% for opt in q.options %}
+              <label class="choice-item" onclick="toggleMulti(this)">
+                <span class="choice-check"><span class="choice-checkmark">✓</span></span>
+                <span class="choice-label">{{ opt }}</span>
+              </label>
+              {% endfor %}
+            </div>
+
+          {% elif q.type == 'yesno' %}
+            <div class="yesno-row" id="ans-{{ q.id }}">
+              <button type="button" class="yesno-btn" onclick="selectYesNo('{{ q.id }}','Yes',this)">Yes</button>
+              <button type="button" class="yesno-btn" onclick="selectYesNo('{{ q.id }}','No',this)">No</button>
+            </div>
+
+          {% elif q.type == 'rating' %}
+            <div class="rating-row" id="ans-{{ q.id }}">
+              {% for i in range(1,6) %}
+              <button type="button" class="rating-btn" onclick="selectRating('{{ q.id }}','{{ i }}',this)">{{ i }}</button>
+              {% endfor %}
+            </div>
+            <div class="rating-labels"><span>Poor</span><span>Excellent</span></div>
+          {% endif %}
+
+          <div class="error-msg" id="err-{{ q.id }}">Please answer this question before continuing.</div>
+        </div>
+
+        <div class="nav-row">
+          <button class="btn-back" onclick="goTo({{ loop.index0 - 1 }}, 'back')" title="Back">&#8592;</button>
+          {% if loop.last %}
+            <button class="btn-submit" id="submit-btn" onclick="submitForm()">Submit Feedback</button>
+          {% else %}
+            <button class="btn-next" onclick="nextFromQuestion({{ loop.index0 }}, '{{ q.id }}', '{{ q.type }}')">Next &rarr;</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- ── Success screen ── -->
+  <div id="success-view" class="success-screen" style="display:none;">
+    <div class="success-icon">&#10003;</div>
+    <h2 class="success-title">Thank you!</h2>
+    <p class="success-sub">Your feedback has been recorded.<br/>You can close this page now.</p>
+  </div>
+
+  <script>
+    const QUESTIONS = {{ questions | tojson }};
+    const SESSION_ID = {{ session_id }};
+    const TOTAL = QUESTIONS.length;
+    const answers = {};
+
+    let currentSlide = 'intro'; // 'intro' | 0..N-1
+
+    // ── Navigation ──────────────────────────────────────────────────────────────
+    function goTo(idx, dir) {
+      // idx = -1 means intro
+      const fromId = currentSlide === 'intro' ? 'slide-intro' : `slide-${currentSlide}`;
+      const toId   = idx === -1 ? 'slide-intro' : `slide-${idx}`;
+      const fromEl = document.getElementById(fromId);
+      const toEl   = document.getElementById(toId);
+
+      const leaveClass  = dir === 'forward' ? 'leaving'      : 'leaving-back';
+      const enterClass  = dir === 'forward' ? ''             : 'entering-back';
+
+      fromEl.classList.add(leaveClass);
+      setTimeout(() => {
+        fromEl.classList.remove('active', leaveClass);
+        toEl.classList.add('active');
+        if (enterClass) {
+          toEl.classList.add(enterClass);
+          setTimeout(() => toEl.classList.remove(enterClass), 320);
+        }
+      }, 220);
+
+      currentSlide = idx === -1 ? 'intro' : idx;
+      updateProgress(idx);
+    }
+
+    function nextFromQuestion(idx, qid, type) {
+      if (!validateQuestion(qid, type)) return;
+      goTo(idx + 1, 'forward');
+    }
+
+    function updateProgress(idx) {
+      const counter = document.getElementById('step-counter');
+      const fill    = document.getElementById('progress-fill');
+      if (idx === -1) {
+        counter.textContent = 'Intro';
+        fill.style.width = '0%';
+      } else {
+        counter.textContent = `${idx + 1} / ${TOTAL}`;
+        fill.style.width = `${Math.round((idx + 1) / TOTAL * 100)}%`;
+      }
+    }
+
+    // ── Answer helpers ──────────────────────────────────────────────────────────
+    function selectSingle(qid, value, el) {
+      document.getElementById('ans-' + qid).querySelectorAll('.choice-item').forEach(i => i.classList.remove('selected'));
+      el.classList.add('selected');
+      answers[qid] = value;
+      clearError(qid);
+    }
+
+    function toggleMulti(el) { el.classList.toggle('selected'); }
+
+    function getMultiAnswer(qid) {
+      return Array.from(document.getElementById('ans-' + qid).querySelectorAll('.choice-item.selected'))
+        .map(i => i.querySelector('.choice-label').textContent.trim());
+    }
+
+    function selectYesNo(qid, val, el) {
+      document.getElementById('ans-' + qid).querySelectorAll('.yesno-btn').forEach(b => b.classList.remove('sel-yes','sel-no'));
+      el.classList.add(val === 'Yes' ? 'sel-yes' : 'sel-no');
+      answers[qid] = val;
+      clearError(qid);
+    }
+
+    function selectRating(qid, val, el) {
+      document.getElementById('ans-' + qid).querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      answers[qid] = val;
+      clearError(qid);
+    }
+
+    function getAnswer(qid, type) {
+      if (type === 'text')     return document.getElementById('ans-' + qid).value.trim();
+      if (type === 'multiple') return getMultiAnswer(qid);
+      return answers[qid] || null;
+    }
+
+    function validateQuestion(qid, type) {
+      const ans = getAnswer(qid, type);
+      const empty = ans === null || ans === '' || (Array.isArray(ans) && ans.length === 0);
+      if (empty) {
+        document.getElementById('qcard-' + qid).classList.add('error');
+        document.getElementById('err-'   + qid).style.display = 'block';
+        return false;
+      }
+      clearError(qid);
+      return true;
+    }
+
+    function clearError(qid) {
+      const card = document.getElementById('qcard-' + qid);
+      const err  = document.getElementById('err-' + qid);
+      if (card) card.classList.remove('error');
+      if (err)  err.style.display = 'none';
+    }
+
+    // ── Submit ──────────────────────────────────────────────────────────────────
+    function submitForm() {
+      // Validate the last question
+      const lastQ = QUESTIONS[TOTAL - 1];
+      if (!validateQuestion(lastQ.id, lastQ.type)) return;
+
+      const payload = {};
+      QUESTIONS.forEach(q => { payload[q.id] = getAnswer(q.id, q.type); });
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      const participant = document.getElementById('participant-name').value.trim() || 'Anonymous';
+
+      fetch(`/feedback/${SESSION_ID}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participant, answers: payload })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('form-view').style.display = 'none';
+          document.getElementById('success-view').style.display = 'flex';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Submit Feedback';
+          alert(data.error || 'Something went wrong. Please try again.');
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Submit Feedback';
+        alert('Network error. Please check your connection.');
+      });
+    }
+  </script>
+</body>
+</html>

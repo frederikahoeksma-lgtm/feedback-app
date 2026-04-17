@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block title %}{{ sess.title }} — EKX Feedback{% endblock %}
+{% block topbar_page %}Session: {{ sess.title }}{% endblock %}
+
+{% block head %}
+<style>
+  /* ── QR box ── */
+  .qr-box {
+    text-align: center; padding: 24px;
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .qr-box img { max-width: 200px; height: auto; border-radius: 8px; }
+  .qr-url {
+    display: block; margin-top: 12px;
+    font-size: 12px; color: var(--blue); word-break: break-all; text-decoration: none;
+  }
+  .qr-url:hover { text-decoration: underline; }
+
+  /* ── Stat cards ── */
+  .stat-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 16px 20px;
+    text-align: center; box-shadow: var(--shadow);
+  }
+  .stat-num   { font-size: 28px; font-weight: 700; color: var(--blue); }
+  .stat-label { font-size: 12px; color: var(--gray-600); margin-top: 4px; }
+
+  /* ── Tabs ── */
+  .tab-nav { display: flex; border-bottom: 2px solid var(--gray-200); margin-bottom: 20px; }
+  .tab-btn {
+    padding: 10px 20px; background: none; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 500; color: var(--gray-600);
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Live dot ── */
+  .live-dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--success); border-radius: 50%;
+    animation: pulse 1.5s infinite; margin-right: 6px;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Per-question result viewer ── */
+  .q-viewer {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .q-viewer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--gray-100);
+    flex-wrap: wrap; gap: 10px;
+  }
+  .q-viewer-nav {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .q-nav-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--gray-200); background: var(--white);
+    cursor: pointer; font-size: 16px; color: var(--gray-600);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .q-nav-btn:hover:not(:disabled) { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+  .q-nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .q-position { font-size: 13px; font-weight: 600; color: var(--gray-600); white-space: nowrap; }
+  .q-viewer-body { padding: 24px 20px; min-height: 160px; }
+
+  /* ── Overview panel ── */
+  .overview-section { margin-top: 0; }
+  .overview-divider {
+    display: flex; align-items: center; gap: 12px; margin: 28px 0 20px;
+  }
+  .overview-divider-line { flex: 1; height: 1px; background: var(--gray-200); }
+  .overview-divider-label {
+    font-size: 12px; font-weight: 700; letter-spacing: .8px;
+    text-transform: uppercase; color: var(--gray-400); white-space: nowrap;
+  }
+  .overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .overview-card {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .overview-card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--gray-100);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .ov-num {
+    background: var(--blue); color: var(--white);
+    font-weight: 700; font-size: 11px;
+    min-width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .ov-title { font-size: 13px; font-weight: 600; color: var(--gray-800); line-height: 1.4; }
+  .overview-card-body { padding: 14px 16px; }
+
+  /* ── Bar chart ── */
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 13px; }
+  .bar-label { min-width: 80px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-800); flex-shrink: 0; }
+  .bar-track { flex: 1; background: var(--gray-100); border-radius: 100px; height: 14px; overflow: hidden; }
+  .bar-fill  { height: 100%; background: var(--blue); border-radius: 100px; transition: width .5s; }
+  .bar-count { min-width: 28px; text-align: right; color: var(--gray-400); font-size: 12px; }
+
+  /* ── Rating histogram ── */
+  .rating-bars      { display: flex; gap: 8px; align-items: flex-end; height: 80px; margin-top: 8px; }
+  .rating-col       { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .rating-bar       { width: 100%; background: var(--blue); border-radius: 4px 4px 0 0; min-height: 4px; transition: height .5s; }
+  .rating-num       { font-size: 11px; color: var(--gray-600); }
+  .rating-cnt       { font-size: 11px; color: var(--gray-400); }
+  .rating-avg       { font-size: 12px; color: var(--gray-600); margin-top: 8px; }
+
+  /* ── Text pills ── */
+  .response-pill {
+    display: inline-block; background: var(--blue-light); color: var(--blue);
+    border-radius: 100px; padding: 4px 10px; font-size: 12px; margin: 2px;
+  }
+
+  /* ── Waiting ── */
+  .waiting { font-size: 13px; color: var(--gray-400); font-style: italic; }
+
+  /* ── Responses table ── */
+  .response-pill-sm {
+    display: inline-block; background: var(--blue-light); color: var(--blue);
+    border-radius: 100px; padding: 2px 8px; font-size: 11px; margin: 1px;
+  }
+
+  @media (max-width: 640px) {
+    .stat-cards { grid-template-columns: repeat(2,1fr); }
+    .two-col    { flex-direction: column !important; }
+    .overview-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <!-- ── Header ── -->
+  <div class="page-header flex-between" style="flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">{{ sess.title }}</h1>
+      {% if sess.description %}
+        <p class="page-subtitle">{{ sess.description }}</p>
+      {% endif %}
+    </div>
+    <div class="flex gap-8" style="flex-wrap:wrap;">
+      <form method="POST" action="/session/{{ sess.id }}/toggle" style="display:inline;">
+        {% if sess.is_active %}
+          <button type="submit" class="btn btn-ghost btn-sm">Close Session</button>
+        {% else %}
+          <button type="submit" class="btn btn-secondary btn-sm">Re-open Session</button>
+        {% endif %}
+      </form>
+      <form method="POST" action="/session/{{ sess.id }}/delete"
+        onsubmit="return confirm('Delete this session and all responses?');" style="display:inline;">
+        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+      </form>
+      <a href="/" class="btn btn-ghost btn-sm">&larr; All Sessions</a>
+    </div>
+  </div>
+
+  <!-- ── Live / Closed indicator ── -->
+  <div class="flex-center gap-8" style="margin-bottom:20px;">
+    {% if sess.is_active %}
+      <span class="live-dot"></span>
+      <span style="font-size:13px;font-weight:600;color:var(--success);">Live</span>
+    {% else %}
+      <span style="font-size:13px;font-weight:600;color:var(--gray-400);">Closed</span>
+    {% endif %}
+    <span style="font-size:12px;color:var(--gray-400);">&nbsp;·&nbsp; Created {{ sess.created_at }}</span>
+  </div>
+
+  <!-- ── Stats ── -->
+  <div class="stat-cards">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-responses">{{ responses|length }}</div>
+      <div class="stat-label">Responses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ sess.max_participants }}</div>
+      <div class="stat-label">Max Participants</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ questions|length }}</div>
+      <div class="stat-label">Questions</div>
+    </div>
+  </div>
+
+  <!-- ── Main layout: QR + Tabs ── -->
+  <div class="flex gap-16 two-col" style="align-items:flex-start;flex-wrap:wrap;">
+
+    <!-- QR Code -->
+    <div style="flex:0 0 240px;">
+      <div class="qr-box">
+        <p style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">Scan to Participate</p>
+        <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" />
+        <a href="{{ feedback_url }}" target="_blank" class="qr-url">{{ feedback_url }}</a>
+        <div class="mt-16">
+          <button onclick="copyUrl()" class="btn btn-secondary btn-sm" style="width:100%;">Copy Link</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="flex:1;min-width:280px;">
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('results',this)">Live Results</button>
+        <button class="tab-btn" onclick="switchTab('responses',this)">All Responses</button>
+        <button class="tab-btn" onclick="switchTab('questions',this)">Questions</button>
+      </div>
+
+      <!-- ══ RESULTS TAB ══ -->
+      <div class="tab-panel active" id="tab-results">
+
+        <!-- Per-question viewer -->
+        <div class="q-viewer" id="q-viewer">
+          <div class="q-viewer-header">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--gray-400);margin-bottom:4px;">Question</div>
+              <div id="q-viewer-title" style="font-size:15px;font-weight:600;color:var(--gray-800);line-height:1.4;"></div>
+            </div>
+            <div class="q-viewer-nav">
+              <button class="q-nav-btn" id="btn-prev" onclick="stepQuestion(-1)" title="Previous">&#8592;</button>
+              <span class="q-position" id="q-position">1 / {{ questions|length }}</span>
+              <button class="q-nav-btn" id="btn-next" onclick="stepQuestion(1)"  title="Next">&#8594;</button>
+            </div>
+          </div>
+          <div class="q-viewer-body" id="q-viewer-body">
+            <p class="waiting">Loading...</p>
+          </div>
+        </div>
+
+        <!-- Overview of all questions -->
+        <div class="overview-section" id="overview-section">
+          <div class="overview-divider">
+            <div class="overview-divider-line"></div>
+            <div class="overview-divider-label">Overview — All Questions</div>
+            <div class="overview-divider-line"></div>
+          </div>
+          <div class="overview-grid" id="overview-grid">
+            {% for q in questions %}
+            <div class="overview-card">
+              <div class="overview-card-header">
+                <span class="ov-num">{{ loop.index }}</span>
+                <span class="ov-title">{{ q.text }}</span>
+              </div>
+              <div class="overview-card-body" id="ov-chart-{{ q.id }}">
+                <p class="waiting">Waiting for responses...</p>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+      <!-- end RESULTS TAB -->
+
+      <!-- ══ RESPONSES TAB ══ -->
+      <div class="tab-panel" id="tab-responses">
+        {% if responses %}
+        <div class="table-wrap card">
+          <table>
+            <thead>
+              <tr>
+                <th>Participant</th>
+                <th>Submitted</th>
+                {% for q in questions %}
+                <th style="max-width:140px;">Q{{ loop.index }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody id="responses-tbody">
+              {% for r in responses %}
+              <tr>
+                <td><strong>{{ r.participant }}</strong></td>
+                <td style="font-size:12px;color:var(--gray-400);">{{ r.submitted_at }}</td>
+                {% for q in questions %}
+                <td style="font-size:12px;">
+                  {% set ans = r.answers.get(q.id|string, '') %}
+                  {% if ans is iterable and ans is not string %}
+                    {% for a in ans %}<span class="response-pill-sm">{{ a }}</span>{% endfor %}
+                  {% else %}
+                    {{ ans }}
+                  {% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty">
+          <div class="empty-icon">💬</div>
+          <p class="empty-text">No responses yet. Share the QR code to collect feedback.</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ══ QUESTIONS TAB ══ -->
+      <div class="tab-panel" id="tab-questions">
+        {% for q in questions %}
+        <div class="card" style="margin-bottom:12px;">
+          <div class="card-body">
+            <div class="flex-center gap-8">
+              <span style="background:var(--blue);color:var(--white);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">{{ loop.index }}</span>
+              <span style="font-weight:500;">{{ q.text }}</span>
+            </div>
+            <p style="font-size:12px;color:var(--gray-400);margin-top:6px;margin-left:30px;">
+              Type: {{ q.type }}
+              {% if q.options %}
+                &nbsp;·&nbsp; Options: {{ q.options | join(', ') }}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  const SESSION_ID = {{ sess.id }};
+  const QUESTIONS  = {{ questions | tojson }};
+  const TOTAL      = QUESTIONS.length;
+  let   currentQ   = 0;
+  let   resultsData = {};
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── Copy URL ──────────────────────────────────────────────────────────────
+  function copyUrl() {
+    navigator.clipboard.writeText('{{ feedback_url }}').then(() => showToast('Link copied to clipboard'));
+  }
+
+  // ── Per-question navigation ───────────────────────────────────────────────
+  function stepQuestion(delta) {
+    const next = currentQ + delta;
+    if (next < 0 || next >= TOTAL) return;
+    currentQ = next;
+    renderViewer();
+  }
+
+  function renderViewer() {
+    const q    = QUESTIONS[currentQ];
+    const data = resultsData[String(q.id)] || { answers: [] };
+
+    document.getElementById('q-viewer-title').textContent = q.text;
+    document.getElementById('q-position').textContent     = `${currentQ + 1} / ${TOTAL}`;
+    document.getElementById('btn-prev').disabled = (currentQ === 0);
+    document.getElementById('btn-next').disabled = (currentQ === TOTAL - 1);
+
+    const body = document.getElementById('q-viewer-body');
+    body.innerHTML = renderChart(q, data, 'large');
+  }
+
+  // ── Load results from API ─────────────────────────────────────────────────
+  function loadResults() {
+    fetch(`/api/session/${SESSION_ID}/results`)
+      .then(r => r.json())
+      .then(data => {
+        resultsData = data;
+        renderViewer();
+        renderOverview();
+      });
+  }
+
+  // ── Render overview (all questions compact) ───────────────────────────────
+  function renderOverview() {
+    QUESTIONS.forEach(q => {
+      const el   = document.getElementById(`ov-chart-${q.id}`);
+      const data = resultsData[String(q.id)] || { answers: [] };
+      if (el) el.innerHTML = renderChart(q, data, 'small');
+    });
+  }
+
+  // ── Chart renderer ────────────────────────────────────────────────────────
+  // size = 'large' (viewer) | 'small' (overview card)
+  function renderChart(q, data, size) {
+    const answers = data.answers || [];
+    if (answers.length === 0) {
+      return `<p class="waiting">Waiting for responses...</p>`;
+    }
+
+    if (q.type === 'text') {
+      return answers.map(a => `<span class="response-pill">${escHtml(a)}</span>`).join(' ');
+    }
+
+    if (q.type === 'yesno') {
+      const counts = { Yes: 0, No: 0 };
+      answers.forEach(a => { if (a in counts) counts[a]++; });
+      return renderBars(counts, answers.length, size);
+    }
+
+    if (q.type === 'rating') {
+      const counts = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+      answers.forEach(a => { if (a in counts) counts[a]++; });
+      return renderRating(counts, answers.length, size);
+    }
+
+    if (q.type === 'single' || q.type === 'multiple') {
+      const counts = {};
+      answers.forEach(a => {
+        if (Array.isArray(a)) { a.forEach(v => { counts[v] = (counts[v] || 0) + 1; }); }
+        else { counts[a] = (counts[a] || 0) + 1; }
+      });
+      return renderBars(counts, answers.length, size);
+    }
+
+    return `<p class="waiting">No data.</p>`;
+  }
+
+  function renderBars(counts, total, size) {
+    const max = Math.max(...Object.values(counts), 1);
+    const barH = size === 'large' ? '18px' : '12px';
+    const rows = Object.entries(counts).map(([label, cnt]) => `
+      <div class="bar-row">
+        <span class="bar-label" style="${size==='small'?'font-size:12px;':''}" title="${escHtml(label)}">${escHtml(label)}</span>
+        <div class="bar-track" style="height:${barH}">
+          <div class="bar-fill" style="width:${Math.round(cnt / max * 100)}%"></div>
+        </div>
+        <span class="bar-count">${cnt}</span>
+      </div>`).join('');
+    return rows + `<p style="font-size:11px;color:var(--gray-400);margin-top:8px;">${total} response${total!==1?'s':''}</p>`;
+  }
+
+  function renderRating(counts, total, size) {
+    const max   = Math.max(...Object.values(counts), 1);
+    const hMax  = size === 'large' ? 72 : 50;
+    const sum   = Object.entries(counts).reduce((s,[k,v]) => s + parseInt(k)*v, 0);
+    const avg   = total > 0 ? (sum / total).toFixed(1) : '—';
+    const cols  = [1,2,3,4,5].map(i => {
+      const cnt = counts[i] || 0;
+      const h   = Math.round(cnt / max * hMax) + 4;
+      return `<div class="rating-col">
+        <span class="rating-cnt">${cnt}</span>
+        <div class="rating-bar" style="height:${h}px"></div>
+        <span class="rating-num">${i}</span>
+      </div>`;
+    }).join('');
+    return `<div class="rating-bars" style="height:${hMax+24}px">${cols}</div>
+            <p class="rating-avg">Average: <strong>${avg}</strong> &nbsp;·&nbsp; ${total} response${total!==1?'s':''}</p>`;
+  }
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(String(str || '')));
+    return d.innerHTML;
+  }
+
+  // ── SocketIO live updates ─────────────────────────────────────────────────
+  const socket = io();
+  socket.on('connect', () => socket.emit('join_admin', { session_id: SESSION_ID }));
+  socket.on('new_response', data => {
+    document.getElementById('stat-responses').textContent = data.count;
+    showToast(`New response from ${data.participant}`);
+    loadResults();
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadResults();
+  setInterval(loadResults, 10000);
+</script>
+{% endblock %}

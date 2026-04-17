@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Sessions — EKX Feedback{% endblock %}
+{% block topbar_page %}Sessions{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header flex-between">
+    <div>
+      <h1 class="page-title">Feedback Sessions</h1>
+      <p class="page-subtitle">Create a session, define questions, and share the QR code with participants.</p>
+    </div>
+    <a href="/session/new" class="btn btn-primary">+ New Session</a>
+  </div>
+
+  {% if sessions %}
+  <div class="grid grid-2">
+    {% for s in sessions %}
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">{{ s.title }}</span>
+        {% if s.is_active %}
+          <span class="badge badge-green">Active</span>
+        {% else %}
+          <span class="badge badge-gray">Closed</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if s.description %}
+        <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px;">{{ s.description }}</p>
+        {% endif %}
+        <p style="font-size:12px;color:var(--gray-400);margin-bottom:16px;">
+          Created {{ s.created_at }} &nbsp;·&nbsp; Max {{ s.max_participants }} participants
+        </p>
+        <a href="/session/{{ s.id }}" class="btn btn-secondary btn-sm">View Session</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="empty">
+      <div class="empty-icon">📋</div>
+      <p class="empty-text">No sessions yet. Create your first feedback session to get started.</p>
+      <div class="mt-16">
+        <a href="/session/new" class="btn btn-primary">Create Session</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

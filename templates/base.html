@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}EKX Feedback{% endblock %}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #0070F2;
+      --blue-light: #E1F4FF;
+      --blue-dark:  #0134BF;
+      --blue-acc:   #4CB1FF;
+      --gray-50:    #F5F6F7;
+      --gray-100:   #EAECEE;
+      --gray-200:   #D9DBDE;
+      --gray-400:   #89919A;
+      --gray-600:   #475E75;
+      --gray-800:   #32363A;
+      --black:      #000000;
+      --white:      #FFFFFF;
+      --success:    #107E3E;
+      --warning:    #E9730C;
+      --danger:     #BB0000;
+      --radius:     8px;
+      --shadow:     0 2px 8px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', 'Arial', sans-serif;
+      font-size: 14px;
+      color: var(--black);
+      background: var(--gray-50);
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: inherit;
+    }
+    .topbar-logo {
+      background: var(--blue);
+      color: var(--white);
+      font-weight: 700; font-size: 13px; letter-spacing: .5px;
+      padding: 4px 8px; border-radius: 4px;
+    }
+    .topbar-name { font-weight: 600; font-size: 15px; color: var(--gray-800); }
+    .topbar-sep { color: var(--gray-200); font-size: 20px; }
+    .topbar-page { font-size: 14px; color: var(--gray-600); }
+    .topbar-spacer { flex: 1; }
+    .topbar-nav a {
+      font-size: 13px; color: var(--gray-600); text-decoration: none;
+      padding: 4px 10px; border-radius: 4px; transition: background .15s;
+    }
+    .topbar-nav a:hover { background: var(--gray-100); color: var(--black); }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+    .page-header { margin-bottom: 28px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--gray-800); }
+    .page-subtitle { font-size: 14px; color: var(--gray-600); margin-top: 4px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .card-title { font-size: 15px; font-weight: 600; color: var(--gray-800); }
+    .card-body { padding: 20px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid transparent; text-decoration: none;
+      transition: background .15s, border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn-primary   { background: var(--blue);  color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+    .btn-secondary { background: var(--white); color: var(--blue); border-color: var(--blue); }
+    .btn-secondary:hover { background: var(--blue-light); }
+    .btn-ghost     { background: transparent; color: var(--gray-600); border-color: var(--gray-200); }
+    .btn-ghost:hover { background: var(--gray-100); color: var(--black); }
+    .btn-danger    { background: var(--danger); color: var(--white); border-color: var(--danger); }
+    .btn-danger:hover { background: #990000; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+    .btn-lg { padding: 12px 24px; font-size: 15px; }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-800); margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid var(--gray-200); border-radius: var(--radius);
+      font-size: 14px; font-family: inherit;
+      color: var(--black); background: var(--white);
+      transition: border-color .15s, box-shadow .15s;
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(0,112,242,.12);
+    }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 100px;
+      font-size: 11px; font-weight: 600; letter-spacing: .3px;
+    }
+    .badge-green  { background: #F0FFF4; color: var(--success); border: 1px solid #B7EFCD; }
+    .badge-red    { background: #FFF0F0; color: var(--danger);  border: 1px solid #FFB8B8; }
+    .badge-blue   { background: var(--blue-light); color: var(--blue); border: 1px solid var(--blue-acc); }
+    .badge-gray   { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+
+    /* ── Grid ── */
+    .grid { display: grid; gap: 20px; }
+    .grid-2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+    /* ── Flex helpers ── */
+    .flex { display: flex; }
+    .flex-center { display: flex; align-items: center; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .gap-8  { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .gap-16 { gap: 16px; }
+    .mt-8   { margin-top: 8px; }
+    .mt-16  { margin-top: 16px; }
+    .mt-24  { margin-top: 24px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      background: var(--gray-800); color: var(--white);
+      padding: 12px 18px; border-radius: var(--radius);
+      font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center; padding: 48px 24px; color: var(--gray-400);
+    }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .page { padding: 20px 14px; }
+      .page-title { font-size: 20px; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="topbar">
+    <a href="/" class="topbar-brand">
+      <span class="topbar-logo">EKX</span>
+      <span class="topbar-name">Feedback</span>
+    </a>
+    <span class="topbar-sep">|</span>
+    <span class="topbar-page">{% block topbar_page %}Live Polling{% endblock %}</span>
+    <div class="topbar-spacer"></div>
+    <nav class="topbar-nav flex gap-8">
+      <a href="/">Sessions</a>
+      <a href="/session/new">New Session</a>
+    </nav>
+  </div>
+
+  {% block content %}{% endblock %}
+
+  <div id="toast"></div>
+  <script>
+    function showToast(msg, duration=3000) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
