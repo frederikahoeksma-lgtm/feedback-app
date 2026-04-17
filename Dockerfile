@@ -22,7 +22,7 @@ COPY static/    static/
 # The SQLite database file will live inside the container.
 # To persist data across container restarts, mount a volume:
 #   docker run -p 5000:5000 -v ekx_data:/app ekx-feedback
-VOLUME ["/app"]
+
 
 # Expose the default port
 EXPOSE 5000
